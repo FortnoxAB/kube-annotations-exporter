@@ -1,0 +1,5 @@
+{
+	"serviceName": "kube-annotations-exporter",
+	"language": "go",
+	"team": "sudo"
+}
