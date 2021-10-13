@@ -16,7 +16,7 @@ node('go1.17') {
 
 			stage('Fetch dependencies'){
 				// using ID because: https://issues.jenkins-ci.org/browse/JENKINS-32101
-				sshagent(credentials: ['gitkub-key']) {
+				sshagent(credentials: ['github-key']) {
 					//sh('go get -d -v -t ./...')
 					sh('go mod download')
 				}
@@ -42,7 +42,7 @@ node('go1.17') {
 					PARTS[PARTS.length-1] = (PARTS[PARTS.length-1] as int)+1
 					newTag = 'v'+PARTS.join(".")
 
-					sshagent(credentials: ['gitkub-key']) {
+					sshagent(credentials: ['github-key']) {
 						sh('git config user.email "fortnoxdrift@fortnox.se"')
 						sh('git config user.name "jenkins"')
 						sh("git tag -a ${newTag} -m ${newTag}")
@@ -68,7 +68,7 @@ node('go1.17') {
 		} catch(err) {
 			currentBuild.result = 'FAILED'
 			if (newTag != '') {
-				sshagent(credentials: ['gitkub-key']) {
+				sshagent(credentials: ['github-key']) {
 					sh("git tag -d ${tag}")
 					sh("git push --delete origin ${tag}")
 				}
