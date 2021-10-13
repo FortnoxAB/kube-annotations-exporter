@@ -55,11 +55,10 @@ node('go1.17') {
 			}
 
 			if( tag != ''){
-				strippedTag = tag.replaceFirst('v', '')
 				stage('Build the application'){
-					echo "Building with docker tag ${strippedTag}"
+					echo "Building with docker tag ${tag}"
 					docker.withRegistry("https://quay.io", 'docker-registry') {
-						sh('make push')
+						sh("VERSION=${tag} make push")
 					}
 				}
 			}
