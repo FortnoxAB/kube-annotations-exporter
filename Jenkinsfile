@@ -2,7 +2,7 @@
 // vim: ft=Jenkinsfile
 library 'whatsout'
 
-node('go1.17') {
+node('go1.21') {
 	container('run'){
 		def newTag = ''
 		def tag = ''

@@ -4,14 +4,15 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/koding/multiconfig"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -142,6 +143,20 @@ var objects = map[string]func(ctx context.Context, clientset *kubernetes.Clients
 
 		return tmp, nil
 	},
+	"CronJob": func(ctx context.Context, clientset *kubernetes.Clientset) ([]metav1.Object, error) {
+		list, err := clientset.BatchV1().CronJobs("").List(ctx, metav1.ListOptions{})
+		if err != nil {
+			return nil, err
+		}
+
+		var tmp []metav1.Object
+		for _, item := range list.Items {
+			item := item //magic
+			tmp = append(tmp, item.GetObjectMeta())
+		}
+
+		return tmp, nil
+	},
 }
 
 type exporter struct {
@@ -158,8 +173,9 @@ func (e *exporter) Collect(ch chan<- prometheus.Metric) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*5)
 	defer cancel()
 	err := checkForAnnotations(ctx, e.clientset, e.annotations)
+
 	if err != nil {
-		logrus.Errorf("failed to check ignored items: %s", err)
+		slog.Info("failed to check ignored items", "error", err)
 	}
 	annotationsGauge.Collect(ch)
 }
@@ -179,7 +195,10 @@ func main() {
 		clientset:   clientset,
 		annotations: config.Annotations,
 	})
-	logrus.Infof("starting webserver on port %d", config.Port)
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	slog.SetDefault(logger)
+
+	slog.Info("starting webserver", "port", config.Port)
 	err = http.ListenAndServe(fmt.Sprintf(":%d", config.Port), promhttp.Handler())
 	if err != nil && err != http.ErrServerClosed {
 		log.Fatalf("failed to start server: %s", err)
@@ -212,7 +231,7 @@ func GetClientset() (*kubernetes.Clientset, error) {
 
 	config, err := kubeconfig.ClientConfig()
 	if err != nil {
-		logrus.Info("No kubeconfig found. Using incluster...")
+		slog.Info("No kubeconfig found. Using incluster...")
 		config, err = rest.InClusterConfig()
 		if err != nil {
 			panic(err.Error())
